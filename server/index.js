@@ -1,20 +1,31 @@
-const express = require('express')
-const cors = require('cors')
-const fs = require('fs')
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
 
-const app = express()
-app.use(cors()) // so that app can access
+const app = express();
+app.use(cors()); // so that app can access
+app.use(express.json());
 
-const bookings = JSON.parse(fs.readFileSync('./server/bookings.json')).map(
+let bookings = JSON.parse(fs.readFileSync("./server/bookings.json")).map(
   (bookingRecord) => ({
     time: Date.parse(bookingRecord.time),
-    duration: bookingRecord.duration * 60 * 1000, // mins into ms
+    duration: bookingRecord.duration,
     userId: bookingRecord.user_id,
-  }),
-)
+  })
+);
 
-app.get('/bookings', (_, res) => {
-  res.json(bookings)
-})
+app.get("/bookings", (_, res) => {
+  console.log("GET /bookings");
+  res.json(bookings);
+});
 
-app.listen(3001)
+app.post("/bookings", (req, res) => {
+  // Assuming all posted bookings are valid and don't conflict with existing bookings
+  console.log("POST /bookings");
+  if (!!req.body) {
+    bookings = bookings.concat(req.body);
+  }
+  res.json(bookings);
+});
+
+app.listen(3001);

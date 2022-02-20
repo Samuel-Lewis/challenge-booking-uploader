@@ -1,32 +1,66 @@
 import "./App.css";
 import React, {
+  useCallback,
   useEffect,
   useState
 } from "react";
 import Dropzone from "react-dropzone";
+import {
+  BookingList,
+  BookingTimeline
+} from "./components";
+import { processBookingData } from "./utils/booking";
+import { markConflicts } from "./utils/conflict";
+import { parseBookingCSV } from "./utils/file";
 
-type TimeStamp = string;
-type Seconds = number;
-type Booking = {
-  time: TimeStamp;
-  duration: Seconds;
-  userId: string;
-};
-
+import type { Booking, BookingWithInfo } from "./types";
 const apiUrl = "http://localhost:3001";
 
 export const App = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<BookingWithInfo[]>([]);
+  const [newBookingData, setNewBookingData] = useState<BookingWithInfo[]>([]);
 
   useEffect(() => {
     fetch(`${apiUrl}/bookings`)
       .then((response) => response.json())
+      .then((d) => d.map(processBookingData))
       .then(setBookings);
   }, []);
 
-  const onDrop = (files: File[]) => {
-    console.log(files);
-  };
+  const onDrop = useCallback(
+    (files: File[]) => {
+      const reader = new FileReader();
+      reader.onabort = () => console.warn("file reading was aborted");
+      reader.onerror = () => console.error("file reading has failed");
+      reader.onload = () => {
+        const bookingData = parseBookingCSV(reader.result as string | null);
+        const markedBookings = markConflicts(bookings, bookingData);
+        setNewBookingData([...newBookingData, ...markedBookings]);
+      };
+
+      files.forEach((file) => reader.readAsText(file));
+    },
+    [newBookingData, bookings]
+  );
+
+  const handlePost = useCallback(() => {
+    const postData: Booking[] = newBookingData
+      .filter((booking) => !booking.conflicts)
+      .map((booking) => {
+        const { timeInfo, conflicts, ...rest } = booking;
+        return rest;
+      });
+
+    fetch(`${apiUrl}/bookings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(postData),
+    })
+      .then((response) => response.json())
+      .then((d) => d.map(processBookingData))
+      .then(setBookings)
+      .then(() => setNewBookingData([]));
+  }, [newBookingData]);
 
   return (
     <div className="App">
@@ -43,20 +77,22 @@ export const App = () => {
         </Dropzone>
       </div>
       <div className="App-main">
-        <p>Existing bookings:</p>
-        {bookings.map((booking, i) => {
-          const date = new Date(booking.time);
-          const duration = booking.duration / (60 * 1000);
-          return (
-            <p key={i} className="App-booking">
-              <span className="App-booking-time">{date.toString()}</span>
-              <span className="App-booking-duration">
-                {duration.toFixed(1)}
-              </span>
-              <span className="App-booking-user">{booking.userId}</span>
-            </p>
-          );
-        })}
+        <button disabled={newBookingData.length === 0} onClick={handlePost}>
+          POST new bookings
+        </button>
+
+        <BookingTimeline
+          bookings={[...bookings, ...newBookingData]}
+          heading="Booking Timeline"
+        />
+
+        {bookings.length > 0 && (
+          <BookingList bookings={bookings} heading={"Existing bookings"} />
+        )}
+
+        {newBookingData.length > 0 && (
+          <BookingList bookings={newBookingData} heading={"New bookings"} />
+        )}
       </div>
     </div>
   );

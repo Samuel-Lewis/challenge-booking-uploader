@@ -21,17 +21,6 @@
   font-size: large;
 }
 
-.App-booking-time {
-  display: inline-block;
-  width: 400px;
-}
-
-.App-booking-duration {
-  display: inline-block;
-  width: 80px;
-}
-
-.App-booking-user {
-  display: inline-block;
-  width: 80px;
+.booking-list {
+  width: 100%;
 }
