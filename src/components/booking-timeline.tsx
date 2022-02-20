@@ -8,6 +8,12 @@ export type BookingTimelineProps = {
   heading?: string;
 };
 
+const mapToSeries = (booking: BookingWithInfo) => ({
+  x: booking.userId,
+  y: [booking.timeInfo.startTime.getTime(), booking.timeInfo.endTime.getTime()],
+  fillColor: booking.conflicts ? "#FF0000" : "",
+});
+
 export const BookingTimeline: React.FC<BookingTimelineProps> = ({
   bookings,
   heading,
@@ -45,38 +51,14 @@ export const BookingTimeline: React.FC<BookingTimelineProps> = ({
     },
   };
 
-  const conflictingSeries = bookings
-    .filter((b) => b.conflicts)
-    .map((booking) => {
-      return {
-        x: booking.userId,
-        y: [
-          booking.timeInfo.startTime.getTime(),
-          booking.timeInfo.endTime.getTime(),
-        ],
-        fillColor: booking.conflicts ? "#FF0000" : "",
-      };
-    });
-
-  const bookingSeries = bookings
-    .filter((b) => !b.conflicts)
-    .map((booking) => {
-      return {
-        x: booking.userId,
-        y: [
-          booking.timeInfo.startTime.getTime(),
-          booking.timeInfo.endTime.getTime(),
-        ],
-        val: booking.conflicts ? 1 : 0,
-      };
-    });
-
   const series = [
     {
-      data: bookingSeries,
+      data: bookings.filter((b) => !b.conflicts).map(mapToSeries),
+      label: "Available",
     },
     {
-      data: conflictingSeries,
+      data: bookings.filter((b) => b.conflicts).map(mapToSeries),
+      label: "Conflicts",
     },
   ];
 

@@ -11,6 +11,10 @@ export const BookingList: React.FC<BookingListProps> = ({
   bookings,
   heading,
 }) => {
+  if (bookings.length === 0) {
+    return null;
+  }
+
   return (
     <div>
       <h2>{heading ?? "Bookings"}</h2>
